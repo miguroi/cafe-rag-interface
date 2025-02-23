@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cafe RAG - Malang Cafe Finder</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>Cafe RAG</h1>
+            <p class="subtitle">Temukan kafe terbaik di Malang sesuai kebutuhan Anda</p>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="search-container">
+            <div class="search-box">
+                <input type="text" id="search-input" placeholder="Cari kafe berdasarkan menu, suasana, atau fasilitas...">
+                <button onclick="searchCafes()">Cari</button>
+            </div>
+
+            <div class="example-queries">
+                <h3>Contoh pencarian:</h3>
+                <div class="query-chips">
+                    <div class="query-chip" onclick="useExample(this)">Kafe yang jual dimsum di malang</div>
+                    <div class="query-chip" onclick="useExample(this)">Cafe dengan wifi yang buka malam hari</div>
+                    <div class="query-chip" onclick="useExample(this)">Rekomendasi cafe untuk meeting dengan klien</div>
+                    <div class="query-chip" onclick="useExample(this)">Cafe yang cocok untuk nongkrong bersama teman</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="loading">
+            <img src="/api/placeholder/50/50" alt="Loading...">
+            <p>Mencari kafe terbaik untuk Anda...</p>
+        </div>
+
+        <div class="results-container">
+            <!-- Results will be populated here -->
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>© 2024 Cafe RAG - Sistem Rekomendasi Kafe di Malang</p>
+        </div>
+    </footer>
+
+    <script>
+        function useExample(element) {
+            document.getElementById('search-input').value = element.textContent;
+        }
+
+        async function searchCafes() {
+            const query = document.getElementById('search-input').value.trim();
+            if (!query) return;
+
+            // Show loading
+            document.querySelector('.loading').classList.add('active');
+            document.querySelector('.results-container').classList.remove('active');
+
+            try {
+                // Make API call to your Cafe RAG backend
+                const response = await fetch('https://your-cafe-rag-api.zeabur.app/api/query', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        query: query,
+                        use_fallback: false
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('API request failed');
+                }
+
+                const data = await response.json();
+                
+                document.querySelector('.loading').classList.remove('active');
+                document.querySelector('.results-container').classList.add('active');
+
+                if (data.status === 'success' && data.data.search_results) {
+                    displayResults(data.data.search_results);
+                } else {
+                    displayError('No results found');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                document.querySelector('.loading').classList.remove('active');
+                displayError('An error occurred while searching. Please try again.');
+            }
+        }
+
+        function displayResults(results) {
+            const container = document.querySelector('.results-container');
+            container.innerHTML = results.map(result => `
+                <div class="result-card">
+                    <h3>${result.name || 'Unnamed Cafe'}</h3>
+                    <div class="result-meta">
+                        ${result.rating ? `<span>⭐ ${result.rating}</span> • ` : ''}
+                        ${result.address ? `<span>📍 ${result.address}</span>` : ''}
+                        ${result.price_range ? `<br><span>💰 ${result.price_range}</span>` : ''}
+                    </div>
+                    ${result.menu_summary ? `
+                        <div class="result-menu">
+                            <strong>Menu:</strong> ${result.menu_summary}
+                        </div>
+                    ` : ''}
+                    ${result.hours ? `
+                        <div class="result-hours">
+                            <strong>Jam Buka:</strong> ${
+                                typeof result.hours === 'object' 
+                                ? Object.entries(result.hours).map(([day, time]) => `${day}: ${time}`).join('; ')
+                                : result.hours
+                            }
+                        </div>
+                    ` : ''}
+                    ${result.key_attributes ? `
+                        <div class="result-attributes">
+                            <strong>Fasilitas:</strong> ${
+                                typeof result.key_attributes === 'object'
+                                ? Object.entries(result.key_attributes)
+                                    .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
+                                    .join('; ')
+                                : result.key_attributes
+                            }
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('');
+        }
+
+        function displayError(message) {
+            const container = document.querySelector('.results-container');
+            container.classList.add('active');
+            container.innerHTML = `
+                <div class="error-message">
+                    <p>❌ ${message}</p>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>
